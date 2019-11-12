@@ -35,6 +35,7 @@ import (
 
 type CertificateManager interface {
 	GetTLSContext(context.Context, *api.TLSContext) (ca, public, private string, err error)
+	GetSecretString(context.Context, *api.K8sSecret) (string, error)
 }
 
 // PolicyContext is an interface policy resolution functions use to access the Repository.
