@@ -67,11 +67,6 @@ type K8sSecret struct {
 	Name string `json:"name"`
 }
 
-// Equal returns true if 'a' and 'b' have the same contents.
-func (a *K8sSecret) Equal(b *K8sSecret) bool {
-	return a == nil && b == nil || a != nil && b != nil && *a == *b
-}
-
 // TLSContext provides TLS configuration via reference to either k8s secrets
 // or via filepath. If both are set, directory is given priority over
 // k8sSecrets.
@@ -104,16 +99,6 @@ type TLSContext struct {
 	// If omitted, 'tls.key' is assumed, if it exists.
 	// If given, the item must exist.
 	PrivateKey string `json:"privateKey,omitempty"`
-}
-
-// Equal returns true if 'a' and 'b' have the same contents.
-func (a *TLSContext) Equal(b *TLSContext) bool {
-	return a == nil && b == nil || a != nil && b != nil &&
-		a.K8sSecret.Equal(b.K8sSecret) &&
-		a.CertificatesPath == b.CertificatesPath &&
-		a.TrustedCA == b.TrustedCA &&
-		a.Certificate == b.Certificate &&
-		a.PrivateKey == b.PrivateKey
 }
 
 // PortRule is a list of ports/protocol combinations with optional Layer 7

@@ -15,7 +15,9 @@
 package policy
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -31,10 +33,15 @@ import (
 	"github.com/cilium/cilium/pkg/policy/api"
 )
 
+type CertificateManager interface {
+	GetTLSContext(context.Context, *api.TLSContext) (ca, public, private string, err error)
+}
+
 // PolicyContext is an interface policy resolution functions use to access the Repository.
 // This way testing code can run without mocking a full Repository.
 type PolicyContext interface {
 	GetSelectorCache() *SelectorCache
+	GetTLSContext(*api.TLSContext) (ca, public, private string, err error)
 }
 
 // Repository is a list of policy rules which in combination form the security
@@ -65,11 +72,21 @@ type Repository struct {
 
 	// PolicyCache tracks the selector policies created from this repo
 	policyCache *PolicyCache
+
+	certManager CertificateManager
 }
 
 // GetSelectorCache() returns the selector cache used by the Repository
 func (p *Repository) GetSelectorCache() *SelectorCache {
 	return p.selectorCache
+}
+
+// GetSelectorCache() returns the selector cache used by the Repository
+func (p *Repository) GetTLSContext(tls *api.TLSContext) (ca, public, private string, err error) {
+	if p.certManager == nil {
+		return "", "", "", fmt.Errorf("No Certificate Manager set on Policy Repository")
+	}
+	return p.certManager.GetTLSContext(context.TODO(), tls)
 }
 
 // GetPolicyCache() returns the policy cache used by the Repository
@@ -78,7 +95,7 @@ func (p *Repository) GetPolicyCache() *PolicyCache {
 }
 
 // NewPolicyRepository creates a new policy repository.
-func NewPolicyRepository(idCache cache.IdentityCache) *Repository {
+func NewPolicyRepository(idCache cache.IdentityCache, certManager CertificateManager) *Repository {
 	repoChangeQueue := eventqueue.NewEventQueueBuffered("repository-change-queue", option.Config.PolicyQueueSize)
 	ruleReactionQueue := eventqueue.NewEventQueueBuffered("repository-reaction-queue", option.Config.PolicyQueueSize)
 	repoChangeQueue.Run()
@@ -90,6 +107,7 @@ func NewPolicyRepository(idCache cache.IdentityCache) *Repository {
 		RepositoryChangeQueue: repoChangeQueue,
 		RuleReactionQueue:     ruleReactionQueue,
 		selectorCache:         selectorCache,
+		certManager:           certManager,
 	}
 	repo.policyCache = NewPolicyCache(repo, true)
 	return repo
@@ -124,7 +142,7 @@ func (state *traceState) trace(rules int, ctx *SearchContext) {
 }
 
 // This belongs to l4.go as this manipulates L4Filters
-func wildcardL3L4Rule(proto api.L4Proto, port int, terminatingTLS, originatingTLS *api.TLSContext, endpoints api.EndpointSelectorSlice,
+func wildcardL3L4Rule(proto api.L4Proto, port int, endpoints api.EndpointSelectorSlice,
 	ruleLabels labels.LabelArray, l4Policy L4PolicyMap, selectorCache *SelectorCache) {
 	for _, filter := range l4Policy {
 		if proto != filter.Protocol || (port != 0 && port != filter.Port) {
@@ -138,8 +156,6 @@ func wildcardL3L4Rule(proto api.L4Proto, port int, terminatingTLS, originatingTL
 			for _, sel := range endpoints {
 				cs := filter.cacheIdentitySelector(sel, selectorCache)
 				filter.L7RulesPerEp[cs] = &PerEpData{
-					TerminatingTLS: terminatingTLS,
-					OriginatingTLS: originatingTLS,
 					L7Rules: api.L7Rules{
 						HTTP: []api.PortRuleHTTP{{}},
 					}}
@@ -151,8 +167,6 @@ func wildcardL3L4Rule(proto api.L4Proto, port int, terminatingTLS, originatingTL
 				rule.Sanitize()
 				cs := filter.cacheIdentitySelector(sel, selectorCache)
 				filter.L7RulesPerEp[cs] = &PerEpData{
-					TerminatingTLS: terminatingTLS,
-					OriginatingTLS: originatingTLS,
 					L7Rules: api.L7Rules{
 						Kafka: []api.PortRuleKafka{rule},
 					}}
@@ -168,8 +182,6 @@ func wildcardL3L4Rule(proto api.L4Proto, port int, terminatingTLS, originatingTL
 				rule.Sanitize()
 				cs := filter.cacheIdentitySelector(sel, selectorCache)
 				filter.L7RulesPerEp[cs] = &PerEpData{
-					TerminatingTLS: terminatingTLS,
-					OriginatingTLS: originatingTLS,
 					L7Rules: api.L7Rules{
 						DNS: []api.PortRuleDNS{rule},
 					}}
@@ -179,8 +191,6 @@ func wildcardL3L4Rule(proto api.L4Proto, port int, terminatingTLS, originatingTL
 			for _, sel := range endpoints {
 				cs := filter.cacheIdentitySelector(sel, selectorCache)
 				filter.L7RulesPerEp[cs] = &PerEpData{
-					TerminatingTLS: terminatingTLS,
-					OriginatingTLS: originatingTLS,
 					L7Rules: api.L7Rules{
 						L7Proto: filter.L7Parser.String(),
 						L7:      []api.PortRuleL7{},
