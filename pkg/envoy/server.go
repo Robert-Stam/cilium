@@ -689,9 +689,14 @@ func getPortNetworkPolicyRule(sel policy.CachedSelector, l7Parser policy.L7Parse
 
 	switch l7Parser {
 	case policy.ParserTypeHTTP:
-		if len(l7Rules.HTTP) > 0 { // Just cautious. This should never be false.
-			r.L7 = &cilium.PortNetworkPolicyRule_HttpRules{
-				HttpRules: GetEnvoyHTTPRules(nil, &l7Rules.L7Rules),
+		// 'r.L7' is an interface which must not be set to a typed 'nil',
+		// so check if we have any rules
+		if len(l7Rules.HTTP) > 0 {
+			// Use L7 rules computed earlier?
+			if l7Rules.EnvoyHTTPRules != nil {
+				r.L7 = &cilium.PortNetworkPolicyRule_HttpRules{HttpRules: l7Rules.EnvoyHTTPRules}
+			} else {
+				r.L7 = &cilium.PortNetworkPolicyRule_HttpRules{HttpRules: GetEnvoyHTTPRules(nil, &l7Rules.L7Rules)}
 			}
 		}
 

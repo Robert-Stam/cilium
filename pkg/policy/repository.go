@@ -31,6 +31,7 @@ import (
 	"github.com/cilium/cilium/pkg/metrics"
 	"github.com/cilium/cilium/pkg/option"
 	"github.com/cilium/cilium/pkg/policy/api"
+	"github.com/cilium/proxy/go/cilium/api"
 )
 
 type CertificateManager interface {
@@ -43,6 +44,7 @@ type CertificateManager interface {
 type PolicyContext interface {
 	GetSelectorCache() *SelectorCache
 	GetTLSContext(*api.TLSContext) (ca, public, private string, err error)
+	GetEnvoyHTTPRules(*api.L7Rules) *cilium.HttpNetworkPolicyRules
 }
 
 // Repository is a list of policy rules which in combination form the security
@@ -75,6 +77,8 @@ type Repository struct {
 	policyCache *PolicyCache
 
 	certManager CertificateManager
+
+	getEnvoyHTTPRules func(CertificateManager, *api.L7Rules) *cilium.HttpNetworkPolicyRules
 }
 
 // GetSelectorCache() returns the selector cache used by the Repository
@@ -88,6 +92,17 @@ func (p *Repository) GetTLSContext(tls *api.TLSContext) (ca, public, private str
 		return "", "", "", fmt.Errorf("No Certificate Manager set on Policy Repository")
 	}
 	return p.certManager.GetTLSContext(context.TODO(), tls)
+}
+
+func (p *Repository) GetEnvoyHTTPRules(l7Rules *api.L7Rules) *cilium.HttpNetworkPolicyRules {
+	if p.getEnvoyHTTPRules == nil {
+		return nil
+	}
+	return p.getEnvoyHTTPRules(p.certManager, l7Rules)
+}
+
+func (p *Repository) SetEnvoyRulesFunc(f func(CertificateManager, *api.L7Rules) *cilium.HttpNetworkPolicyRules) {
+	p.getEnvoyHTTPRules = f
 }
 
 // GetPolicyCache() returns the policy cache used by the Repository
@@ -685,7 +700,7 @@ func (p *Repository) resolvePolicyLocked(securityIdentity *identity.Identity) (*
 	}
 
 	// Make the calculated policy ready for incremental updates
-	calculatedPolicy.Attach()
+	calculatedPolicy.Attach(p)
 
 	return calculatedPolicy, nil
 }
