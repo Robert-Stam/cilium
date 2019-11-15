@@ -47,7 +47,7 @@ var PortRuleHTTP1 = &api.PortRuleHTTP{
 	Path:    "/foo",
 	Method:  "GET",
 	Host:    "foo.cilium.io",
-	Headers: []string{"header2 value", "header1"},
+	Headers: []string{"header2: value", "header1"},
 }
 
 var PortRuleHTTP2 = &api.PortRuleHTTP{
@@ -384,7 +384,7 @@ var L4Policy2RequiresV2 = &policy.L4Policy{
 
 func (s *ServerSuite) TestGetHTTPRule(c *C) {
 	obtained := getHTTPRule(nil, PortRuleHTTP1)
-	c.Assert(obtained, checker.Equals, ExpectedHeaders1)
+	c.Assert(obtained.Headers, checker.Equals, ExpectedHeaders1)
 }
 
 func (s *ServerSuite) TestGetPortNetworkPolicyRule(c *C) {
