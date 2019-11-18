@@ -127,7 +127,10 @@ func mergePortProto(ctx *SearchContext, existingFilter, filterToMerge *L4Filter,
 
 				for _, newRule := range newL7Rules.HTTP {
 					if !newRule.Exists(l7Rules.L7Rules) {
+						log.Debug("Appending new rule to existing ones")
 						l7Rules.HTTP = append(l7Rules.HTTP, newRule)
+					} else {
+						log.Debugf("Skipped Appending new rule to existing ones, rule already exists (%v is in %v)", newRule, l7Rules.L7Rules)
 					}
 				}
 			case len(newL7Rules.Kafka) > 0:
@@ -172,6 +175,7 @@ func mergePortProto(ctx *SearchContext, existingFilter, filterToMerge *L4Filter,
 			}
 			existingFilter.L7RulesPerEp[cs] = l7Rules
 		} else {
+			log.Debugf("Appending new rule to existing ones with a new cs (%v)", newL7Rules)
 			existingFilter.L7RulesPerEp[cs] = newL7Rules
 		}
 	}

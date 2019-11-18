@@ -44,7 +44,7 @@ type CertificateManager interface {
 type PolicyContext interface {
 	GetSelectorCache() *SelectorCache
 	GetTLSContext(*api.TLSContext) (ca, public, private string, err error)
-	GetEnvoyHTTPRules(*api.L7Rules) *cilium.HttpNetworkPolicyRules
+	GetEnvoyHTTPRules(*api.L7Rules) (*cilium.HttpNetworkPolicyRules, bool)
 }
 
 // Repository is a list of policy rules which in combination form the security
@@ -78,7 +78,7 @@ type Repository struct {
 
 	certManager CertificateManager
 
-	getEnvoyHTTPRules func(CertificateManager, *api.L7Rules) *cilium.HttpNetworkPolicyRules
+	getEnvoyHTTPRules func(CertificateManager, *api.L7Rules) (*cilium.HttpNetworkPolicyRules, bool)
 }
 
 // GetSelectorCache() returns the selector cache used by the Repository
@@ -94,14 +94,14 @@ func (p *Repository) GetTLSContext(tls *api.TLSContext) (ca, public, private str
 	return p.certManager.GetTLSContext(context.TODO(), tls)
 }
 
-func (p *Repository) GetEnvoyHTTPRules(l7Rules *api.L7Rules) *cilium.HttpNetworkPolicyRules {
+func (p *Repository) GetEnvoyHTTPRules(l7Rules *api.L7Rules) (*cilium.HttpNetworkPolicyRules, bool) {
 	if p.getEnvoyHTTPRules == nil {
-		return nil
+		return nil, true
 	}
 	return p.getEnvoyHTTPRules(p.certManager, l7Rules)
 }
 
-func (p *Repository) SetEnvoyRulesFunc(f func(CertificateManager, *api.L7Rules) *cilium.HttpNetworkPolicyRules) {
+func (p *Repository) SetEnvoyRulesFunc(f func(CertificateManager, *api.L7Rules) (*cilium.HttpNetworkPolicyRules, bool)) {
 	p.getEnvoyHTTPRules = f
 }
 
