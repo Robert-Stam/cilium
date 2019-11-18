@@ -642,6 +642,21 @@ func getCiliumTLSContext(tls *policy.TLSContext) *cilium.TLSContext {
 	}
 }
 
+func GetEnvoyHTTPRules(certManager policy.CertificateManager, l7Rules *api.L7Rules) *cilium.HttpNetworkPolicyRules {
+	if len(l7Rules.HTTP) > 0 { // Just cautious. This should never be false.
+		httpRules := make([]*cilium.HttpNetworkPolicyRule, 0, len(l7Rules.HTTP))
+		for _, l7 := range l7Rules.HTTP {
+			headers := getHTTPRule(certManager, &l7)
+			httpRules = append(httpRules, &cilium.HttpNetworkPolicyRule{Headers: headers})
+		}
+		SortHTTPNetworkPolicyRules(httpRules)
+		return &cilium.HttpNetworkPolicyRules{
+			HttpRules: httpRules,
+		}
+	}
+	return nil
+}
+
 func getPortNetworkPolicyRule(sel policy.CachedSelector, l7Parser policy.L7ParserType, l7Rules *policy.PerEpData) *cilium.PortNetworkPolicyRule {
 	// Optimize the policy if the endpoint selector is a wildcard by
 	// keeping remote policies list empty to match all remote policies.
@@ -675,18 +690,11 @@ func getPortNetworkPolicyRule(sel policy.CachedSelector, l7Parser policy.L7Parse
 	switch l7Parser {
 	case policy.ParserTypeHTTP:
 		if len(l7Rules.HTTP) > 0 { // Just cautious. This should never be false.
-			httpRules := make([]*cilium.HttpNetworkPolicyRule, 0, len(l7Rules.HTTP))
-			for _, l7 := range l7Rules.HTTP {
-				headers := getHTTPRule(nil, &l7)
-				httpRules = append(httpRules, &cilium.HttpNetworkPolicyRule{Headers: headers})
-			}
-			SortHTTPNetworkPolicyRules(httpRules)
 			r.L7 = &cilium.PortNetworkPolicyRule_HttpRules{
-				HttpRules: &cilium.HttpNetworkPolicyRules{
-					HttpRules: httpRules,
-				},
+				HttpRules: GetEnvoyHTTPRules(nil, &l7Rules.L7Rules),
 			}
 		}
+
 	case policy.ParserTypeKafka:
 		// TODO: Support Kafka. For now, just ignore any Kafka L7 rule.
 
