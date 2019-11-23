@@ -76,7 +76,7 @@ type TLSContext struct {
 	//  - 'ca.crt' - Which represents the trusted CA to verify remote source.
 	//  - 'tls.crt' - Which represents the public key certificate.
 	//  - 'tls.key' - Which represents the private key matching the public key certificate.
-	K8sSecret *K8sSecret `json:"k8sSecret,omitempty"`
+	K8sSecret *K8sSecret `json:"secret,omitempty"`
 
 	// CertificatesPath is the directory name that contains the certificates.
 	// By default, Cilium will search in this directory for the following files:

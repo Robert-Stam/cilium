@@ -131,31 +131,31 @@ func (m *Manager) GetTLSContext(ctx context.Context, tlsCtx *api.TLSContext) (ca
 		if ok {
 			ca = string(caBytes)
 		} else if caMustExist {
-			err = fmt.Errorf("Trusted CA %s cannot be found in KssSecret %s/%s", caName, ns, name)
+			err = fmt.Errorf("Trusted CA %s cannot be found in K8sSecret %s/%s", caName, ns, name)
 			return "", "", "", err
 		}
 		publicBytes, ok := secrets[publicName]
 		if ok {
 			public = string(publicBytes)
 		} else if publicMustExist {
-			err = fmt.Errorf("Certificate %s cannot be found in KssSecret %s/%s", publicName, ns, name)
+			err = fmt.Errorf("Certificate %s cannot be found in K8sSecret %s/%s", publicName, ns, name)
 			return "", "", "", err
 		}
 		privateBytes, ok := secrets[privateName]
 		if ok {
 			private = string(privateBytes)
 		} else if privateMustExist {
-			err = fmt.Errorf("Private Key %s cannot be found in KssSecret %s/%s", privateName, ns, name)
+			err = fmt.Errorf("Private Key %s cannot be found in K8sSecret %s/%s", privateName, ns, name)
 			return "", "", "", err
 		}
 		if caBytes != nil || publicBytes != nil || privateBytes != nil {
 			return ca, public, private, nil
 		}
 		if err != nil {
-			err = fmt.Errorf("certificates not found locally in %s nor in k8s secret %s/%s ", m.rootPath, ns, name)
+			err = fmt.Errorf("certificates not found locally in %s nor in K8sSecret %s/%s ", m.rootPath, ns, name)
 			return "", "", "", err
 		}
-		err = fmt.Errorf("certificates not found in k8s secret %s/%s", ns, name)
+		err = fmt.Errorf("certificates not found in K8sSecret %s/%s", ns, name)
 	}
 	return "", "", "", err
 }

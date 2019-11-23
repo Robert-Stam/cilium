@@ -161,6 +161,7 @@ rules:
   - services
   - nodes
   - endpoints
+  - secrets
   verbs:
   - get
   - list

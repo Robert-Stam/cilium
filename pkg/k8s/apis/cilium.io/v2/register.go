@@ -1044,8 +1044,8 @@ var (
 	}
 
 	TLSContext = map[string]apiextensionsv1beta1.JSONSchemaProps{
-		"k8sSecret": {
-			Description: "K8sSecret is the secret that contains the certificates and private key for the TLS context.",
+		"secret": {
+			Description: "Secret is the K8s Secret that contains the certificates and private key for the TLS context.",
 			Type:        "object",
 			Properties:  K8sSecret,
 		},
